@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Varun’s Personal Audio Player</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --neon-pink: #ff00ff;
+      --neon-blue: #00ffff;
+      --neon-green: #39ff14;
+      --neon-yellow: #ffff00;
+      --neon-glow: rgba(255, 0, 255, 0.7);
+      --text-color: #ffffff;
+    }@keyframes neonPulse {
+  0%, 100% { text-shadow: 0 0 10px var(--neon-glow), 0 0 20px var(--neon-glow); }
+  50% { text-shadow: 0 0 20px var(--neon-glow), 0 0 30px var(--neon-glow); }
+}
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background: radial-gradient(circle at top left, #001f2f, #000);
+  color: var(--text-color);
+  margin: 0;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+h1 {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+  animation: neonPulse 2s infinite;
+  color: var(--neon-pink);
+}
+
+#player-container {
+  background: linear-gradient(135deg, var(--neon-blue), var(--neon-green));
+  border: 2px solid var(--neon-pink);
+  border-radius: 20px;
+  padding: 2rem;
+  width: 100%;
+  max-width: 640px;
+  box-shadow: 0 0 30px var(--neon-pink);
+  position: relative;
+}
+
+canvas {
+  width: 100%;
+  height: 100px;
+  display: block;
+  background: rgba(0, 0, 0, 0.8);
+  border-radius: 10px;
+  margin-bottom: 1rem;
+}
+
+#controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+button {
+  background: none;
+  border: 2px solid var(--neon-blue);
+  border-radius: 50%;
+  padding: 0.8rem 1rem;
+  margin: 0.4rem;
+  cursor: pointer;
+  font-size: 1.4rem;
+  color: var(--neon-blue);
+  transition: all 0.3s ease;
+  text-shadow: 0 0 6px var(--neon-blue);
+}
+
+button:hover {
+  background: var(--neon-blue);
+  color: #000;
+  box-shadow: 0 0 12px var(--neon-blue);
+  transform: scale(1.1);
+}
+
+#seekbar {
+  width: 100%;
+  margin: 1rem 0;
+}
+
+input[type=range] {
+  width: 100%;
+  -webkit-appearance: none;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--neon-yellow);
+  outline: none;
+  cursor: pointer;
+}
+
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  background: var(--neon-pink);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 8px var(--neon-pink);
+}
+
+#time-display {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9rem;
+  color: var(--neon-pink);
+}
+
+#playlist {
+  margin-top: 1rem;
+  max-height: 200px;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid var(--neon-green);
+  border-radius: 10px;
+  padding: 0.5rem;
+  scrollbar-width: thin;
+}
+
+#playlist div {
+  padding: 0.5rem;
+  cursor: pointer;
+  border-radius: 5px;
+  color: var(--neon-yellow);
+  transition: background 0.2s, color 0.2s;
+}
+
+#playlist div:hover {
+  background: var(--neon-pink);
+  color: #000;
+}
+
+#playlist .active {
+  background: var(--neon-green);
+  color: #000;
+  font-weight: bold;
+}
+
+@media (max-width: 480px) {
+  body {
+    padding: 1rem;
+  }
+  h1 {
+    font-size: 1.5rem;
+  }
+  button {
+    margin: 0.3rem;
+    padding: 0.6rem 0.8rem;
+  }
+}
+
+  </style>
+</head>
+<body>
+  <h1>Varun’s Personal Audio Player</h1>
+
+  <div id="player-container">
+    <canvas id="visualizer"></canvas>
+    <audio
+  id="audio"
+  autoplay 
+  muted
+  preload="auto"
+  crossorigin="anonymous"
+></audio>
+    <div id="controls">
+      <button id="prev" title="Previous">⏮️</button>
+      <button id="play-pause" title="Play/Pause">▶️</button>
+      <button id="next" title="Next">⏭️</button>
+      <button id="loop-btn" title="Loop Mode">❌</button>
+      <button id="shuffle-btn" title="Shuffle">🔀</button>
+    </div>
+
+    <input type="range" id="seekbar" value="0" min="0" max="100" step="0.1" />
+    <div id="time-display">
+      <span id="current-time">0:00</span>
+      <span id="duration">0:00</span>
+    </div>
+    <div id="playlist">Loading media...</div>
+  </div>
+
+  <script>
+    (()=>{
+      const audio = document.getElementById("audio");
+      const playPauseBtn = document.getElementById("play-pause");
+      const prevBtn = document.getElementById("prev");
+      const nextBtn = document.getElementById("next");
+      const loopBtn = document.getElementById("loop-btn");
+      const shuffleBtn = document.getElementById("shuffle-btn");
+      const seekbar = document.getElementById("seekbar");
+      const playlistDiv = document.getElementById("playlist");
+      const canvas = document.getElementById("visualizer");
+      const canvasCtx = canvas.getContext("2d");
+      const apiUrl = 'https://api.github.com/repos/varun-legend/music/contents/';
+      const GITHUB_TOKEN = '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';
+      // ─── TITLE-CASING HELPER ────────────────────────────────
+function toTitleCase(str) {
+   return str
+     .toLowerCase()
+    .replace(/\b\w/g, c => c.toUpperCase());
+ }
+      
+      let isPlaying = false;
+      let loopMode = 0; // 0 = off, 1 = loop all, 2 = loop one
+      let isShuffle = false;
+      let tracks = [];
+      let currentIndex = 0;
+      let shuffleOrder = [];
+      let shufflePointer = 0;
+      // Updated order: [off, loop-all, loop-one]
+      const loopIcons = ["❌","🔁","🔂"];
+
+      // Visualizer setup
+      let audioContext, analyser, dataArray, bufferLength;
+      function connectVisualizer() {
+        if (!audioContext) {
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          analyser = audioContext.createAnalyser();
+          analyser.fftSize = 256;
+          bufferLength = analyser.frequencyBinCount;
+          dataArray = new Uint8Array(bufferLength);
+          canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+          const sourceNode = audioContext.createMediaElementSource(audio);
+          sourceNode.connect(analyser);
+          sourceNode.connect(audioContext.destination);
+        }
+      }
+
+      function drawVisualizer() {
+        requestAnimationFrame(drawVisualizer);
+        if (!analyser) return;
+        analyser.getByteFrequencyData(dataArray);
+        canvasCtx.fillStyle = "rgba(0, 0, 0, 0.2)";
+        canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const barWidth = (canvas.width / bufferLength) * 2.5;
+        let x = 0;
+        for (let i = 0; i < bufferLength; i++) {
+          const barHeight = dataArray[i];
+          canvasCtx.fillStyle = `rgb(${barHeight+100},50,${barHeight+200})`;
+          canvasCtx.fillRect(x, canvas.height - barHeight/2, barWidth, barHeight/2);
+          x += barWidth + 1;
+        }
+      }
+      drawVisualizer();
+
+      // Utility to format time in mm:ss
+      function formatTime(sec) {
+        const minutes = Math.floor(sec / 60) || 0;
+        const seconds = Math.floor(sec % 60).toString().padStart(2, "0");
+        return `${minutes}:${seconds}`;
+      }
+
+      // Generate shuffle order
+      function generateShuffleOrder() {
+        shuffleOrder = tracks.map((_, i) => i);
+        for (let i = shuffleOrder.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffleOrder[i], shuffleOrder[j]] = [shuffleOrder[j], shuffleOrder[i]];
+        }
+        shufflePointer = shuffleOrder.indexOf(currentIndex);
+        if (shufflePointer === -1) shufflePointer = 0;
+      }
+// Switch to a specific track
+     async function switchToTrack(i) {
+  if (i < 0 || i >= tracks.length) return;
+  
+  // 1) Build the GitHub API URL for raw content
+  const fileApiUrl = `${apiUrl}${encodeURIComponent(tracks[i].path)}`;
+  
+  // 2) Fetch as raw bytes
+  const res = await fetch(fileApiUrl, {
+    headers: {
+      'Accept': 'application/vnd.github.v3.raw',
+      'Authorization': `token ${GITHUB_TOKEN}`
+    }
+  });
+  if (!res.ok) {
+    console.error("Failed to fetch track:", res.status);
+    return;
+  }
+  
+  // 3) Turn into a Blob and object URL
+  const blob = await res.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  
+  // 4) Swap in the new source
+  audio.src = blobUrl;
+  audio.load();              // force load
+  connectVisualizer();
+  audio.currentTime = 0;
+  audio.volume = 1;
+  try {
+    await audio.play();
+  } catch(err) {
+    console.error("Play error:", err);
+  }
+  
+  // 5) Update UI state
+  currentIndex = i;
+  isPlaying = true;
+  playPauseBtn.textContent = "⏸️";
+  Array.from(playlistDiv.children).forEach((el, idx) =>
+    el.classList.toggle("active", idx === i)
+  );
+}
+      function togglePlayPause() {
+        if (audioContext && audioContext.state === "suspended") {
+          audioContext.resume();
+        }
+        if (!isPlaying) {
+          audio.play().catch(err=>console.error("Play error:", err));
+          playPauseBtn.textContent = "⏸️";
+        } else {
+          audio.pause();
+          playPauseBtn.textContent = "▶️";
+        }
+        isPlaying = !isPlaying;
+      }
+
+      function nextTrack() {
+        if (!tracks.length) return;
+        if (isShuffle) {
+          shufflePointer = (shufflePointer + 1) % shuffleOrder.length;
+          const idx = shuffleOrder[shufflePointer];
+          return switchToTrack(idx);
+        }
+        // If loop-one, replay same track
+        if (loopMode === 2) {
+          audio.currentTime = 0;
+          audio.play();
+          return;
+        }
+        let idx = currentIndex + 1;
+        if (idx >= tracks.length) {
+          // If loop-all, wrap around
+          if (loopMode === 1) {
+            idx = 0;
+          } else {
+            return pauseAndReset();
+          }
+        }
+        switchToTrack(idx);
+      }
+
+      function prevTrack() {
+        if (!tracks.length) return;
+        if (isShuffle) {
+          shufflePointer = (shufflePointer - 1 + shuffleOrder.length) % shuffleOrder.length;
+          const idx = shuffleOrder[shufflePointer];
+          return switchToTrack(idx);
+        }
+        let idx = currentIndex - 1;
+        if (idx < 0) {
+          // If loop-all, go to last; else stay at 0
+          idx = loopMode === 1 ? tracks.length - 1 : 0;
+        }
+        switchToTrack(idx);
+      }
+
+      function pauseAndReset() {
+        audio.pause();
+        playPauseBtn.textContent = "▶️";
+        isPlaying = false;
+      }
+
+      function updateSeekbar() {
+        if (!audio.duration || isNaN(audio.duration)) return;
+        seekbar.max = audio.duration;
+        seekbar.value = audio.currentTime;
+      }
+
+      // Time display elements
+      const currentTimeEl = document.getElementById("current-time");
+      const durationEl = document.getElementById("duration");
+
+      audio.addEventListener("loadedmetadata", ()=>{
+        durationEl.textContent = formatTime(audio.duration);
+      });
+      audio.addEventListener("timeupdate", ()=>{
+        currentTimeEl.textContent = formatTime(audio.currentTime);
+        updateSeekbar();
+      });
+      audio.addEventListener("ended", nextTrack);
+
+      // Event listeners for controls
+      playPauseBtn.addEventListener("click", togglePlayPause);
+      prevBtn.addEventListener("click", prevTrack);
+      nextBtn.addEventListener("click", nextTrack);
+
+      loopBtn.addEventListener("click", ()=>{
+        loopMode = (loopMode + 1) % 3;
+        loopBtn.textContent = loopIcons[loopMode];
+      });
+      // Initial state: off (❌)
+      loopBtn.textContent = loopIcons[0];
+
+      shuffleBtn.addEventListener("click", ()=>{
+        isShuffle = !isShuffle;
+        shuffleBtn.style.opacity = isShuffle? "1" : "0.5";
+        if (isShuffle) {
+          generateShuffleOrder();
+        }
+      });
+      shuffleBtn.style.opacity = "0.5";
+
+      seekbar.addEventListener("input", ()=>{
+        audio.currentTime = seekbar.value;
+      });// ─── define loadPlaylist ─────────────────────────────────────
+async function loadPlaylist() {
+  try {
+    const res = await fetch(apiUrl, {
+      headers: {
+        'Accept': 'application/vnd.github.v3+json',
+        // Drop this line if your repo is public
+        'Authorization': `token ${GITHUB_TOKEN}`
+      }
+    });
+    if (!res.ok) throw new Error(`GitHub API error ${res.status}`);
+    
+    const files = await res.json();
+    const audioFiles = files.filter(f =>
+      /\.(mp3|mp4|m4a|ogg|wav|opus|flac)$/i.test(f.name)
+    );
+    
+    // ─── 1) set your global tracks ─────────────────────────────
+    tracks = audioFiles.map(f => ({
+name: f.name,
+path: f.path
+}));
+    
+    // ─── 2) Preload all audio blobs for instant decoding ────────
+    tracks.forEach(track => {
+      const link = document.createElement("link");
+      link.rel = "preload";
+      link.as = "audio";
+      link.href = track.download_url;
+      link.crossOrigin = "anonymous";
+      document.head.appendChild(link);
+    });
+    
+    // ─── 3) populate playlist UI ───────────────────────────────
+    playlistDiv.innerHTML = '';
+    tracks.forEach((file, idx) => {
+      const div = document.createElement('div');
+  const base = file.name.replace(/\.(mp3|mp4|m4a|ogg|wav|opus|flac)$/i, '');
+  div.textContent = toTitleCase(base);
+      div.onclick = () => switchToTrack(idx);
+      playlistDiv.appendChild(div);
+    });
+    
+    // ─── 4) Media Session API for lock-screen & OS controls ────
+    if ('mediaSession' in navigator) {
+      function updateMediaSessionMeta(track) {
+        navigator.mediaSession.metadata = new MediaMetadata({
+  title: toTitleCase(track.name.replace(/\.(mp3|mp4|m4a|ogg|wav|opus|flac)$/i, "")),
+          artist: "Varun’s Music Vault",
+          album:  "Your Playlist",
+        });
+      }
+
+      navigator.mediaSession.setActionHandler('play',  togglePlayPause);
+      navigator.mediaSession.setActionHandler('pause', togglePlayPause);
+      navigator.mediaSession.setActionHandler('previoustrack', prevTrack);
+      navigator.mediaSession.setActionHandler('nexttrack',     nextTrack);
+
+      // wrap switchToTrack to also update metadata
+      const origSwitch = switchToTrack;
+      switchToTrack = i => {
+        origSwitch(i);
+        updateMediaSessionMeta(tracks[i]);
+      };
+    }
+    
+    // ─── 5) autoplay first track ───────────────────────────────
+    // 5) autoplay first track
+if (tracks.length) {
+  switchToTrack(0);
+  audio.muted = false;    // now unmute so the user actually hears it
+} else {
+  playlistDiv.textContent = 'No audio files found.';
+}
+  } catch(err) {
+    console.error(err);
+    playlistDiv.textContent = 'Failed to load playlist: ' + err.message;
+  }
+}
+
+// ─── now actually call it ────────────────────────────────────
+loadPlaylist();
+
+
+// ─── 6) ANDROID BRIDGE ───────────────────────────────────────
+audio.addEventListener("play", () => {
+  if (window.AndroidAudio && typeof window.AndroidAudio.play === "function") {
+    window.AndroidAudio.play(audio.src);
+  }
+});
+    })();
+  </script>
+</body>
+</html>
