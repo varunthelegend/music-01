@@ -1,6 +1,8 @@
 name: Check Repo Size 
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -25,3 +27,8 @@ jobs:
           else
             echo "✅ Size is within safe limits."
           fi
+
+      - name: 📂 List all files sorted by size (excluding .git)
+        run: |
+          echo "🧾 Listing all files sorted by size (excluding .git):"
+          find . -type f ! -path "./.git/*" -exec du -h {} + | sort -hr
